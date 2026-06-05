@@ -1,0 +1,80 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Product Details</title>
+
+    <link rel="stylesheet" href="{% static 'products/details.css' %}">
+
+</head>
+
+<body>
+
+    <div class="detail-container">
+
+        <div class="detail-image">
+
+            <img src="{{ product.image }}">
+
+        </div>
+
+        <div class="detail-info">
+
+            <h1>{{ product.title }}</h1>
+
+            <p class="price">₹{{ product.price }}</p>
+
+            <p class="category">
+                Category: {{ product.category }}
+            </p>
+
+            <p class="rating">
+                Rating: {{ product.rating }}
+            </p>
+
+            <p class="description">
+                {{ product.description }}
+            </p>
+
+            <a href="{% url 'add_to_wishlist' product.id %}">
+
+                <button class="wishlist-btn">
+
+                    ❤️ Add To Wishlist
+
+                </button>
+
+            </a>
+
+            <a href="{% url 'price_history' product.id %}">
+
+                <button>
+
+                    📈 View Price History
+
+                </button>
+
+            </a>
+
+            <a href="{{ product.product_url }}"
+                target="_blank">
+
+                    <button class="buy-btn">
+                        Buy Now
+                    </button>
+            </a>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

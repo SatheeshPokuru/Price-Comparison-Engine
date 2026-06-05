@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>My Wishlist</title>
+
+</head>
+
+<body>
+
+    <h1>My Wishlist ❤️</h1>
+
+    {% for item in wishlist_items %}
+
+        <div>
+
+            <img src="{{ item.product.image }}"
+                 width="150">
+
+            <h3>{{ item.product.title }}</h3>
+
+            <p>₹{{ item.product.price }}</p>
+
+            <a href="{% url 'remove_from_wishlist' item.id %}">
+
+                <button>
+                    Remove
+                </button>
+
+            </a>
+
+        </div>
+
+        <hr>
+
+    {% empty %}
+
+        <h3>No products in wishlist</h3>
+
+    {% endfor %}
+
+</body>
+
+</html>

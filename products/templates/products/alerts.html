@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Price Alerts</title>
+
+</head>
+
+<body>
+
+    <h1>🔥 Price Alerts</h1>
+
+    {% for alert in alerts %}
+
+        <div>
+
+            <h3>{{ alert.product.title }}</h3>
+
+            <p>
+
+                ₹{{ alert.old_price }}
+
+                →
+
+                ₹{{ alert.new_price }}
+
+            </p>
+
+        </div>
+
+        <hr>
+
+    {% empty %}
+
+        <h3>No Alerts</h3>
+
+    {% endfor %}
+
+</body>
+
+</html>

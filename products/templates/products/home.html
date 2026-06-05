@@ -1,0 +1,248 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Price Comparison Website</title>
+
+    <link rel="stylesheet" href="{% static 'products/home.css' %}">
+
+</head>
+
+<body>
+
+    <h1>Price Comparison Website</h1>
+
+    <div class="navbar">
+
+        <h2>PriceWise</h2>
+
+        {% if user.is_authenticated %}
+
+            <p>Welcome {{ user.username }}</p>
+
+            <a href="{% url 'wishlist' %}">
+                Wishlist
+            </a>
+
+            <a href="{% url 'alerts' %}">
+                Alerts
+            </a>
+
+            <a href="{% url 'dashboard' %}">
+                Dashboard
+            </a>
+
+            <a href="{% url 'logout' %}">
+                Logout
+            </a>
+
+        {% else %}
+
+            <a href="{% url 'login' %}">
+                Login
+            </a>
+
+            <a href="{% url 'register' %}">
+                Register
+            </a>
+
+        {% endif %}
+
+    </div>
+
+    <div id="loading-spinner">
+
+    <div class="spinner"></div>
+
+    <p>Searching products...</p>
+
+</div>
+
+    <form method="GET">
+
+    <input type="text"
+       name="product"
+       placeholder="Search product"
+       list="suggestions">
+
+    <datalist id="suggestions">
+
+        {% for item in suggestions %}
+
+            <option value="{{ item.title }}">
+
+        {% endfor %}
+
+    </datalist>
+
+    <select name="sort">
+
+        <option value="">Sort By</option>
+
+        <option value="low_to_high">
+            Lowest Price
+        </option>
+
+        <option value="high_to_low">
+            Highest Price
+        </option>
+
+        <option value="rating">
+            Highest Rating
+        </option>
+
+    </select>
+
+    <select name="source">
+
+        <option value="">
+            All Sources
+        </option>
+
+        <option value="FakeStore">
+            FakeStore
+        </option>
+
+        <option value="DummyJSON">
+            DummyJSON
+        </option>
+
+    </select>
+
+    <input type="number"
+           name="min_price"
+           placeholder="Min Price">
+
+    <input type="number"
+           name="max_price"
+           placeholder="Max Price">
+
+    <button type="submit">
+        Search
+    </button>
+
+</form>
+    
+
+    {% if products %}
+
+        <div class="products-container">
+
+            {% for product in products %}
+
+                <div class="product-card">
+
+                    <img src="{{ product.image }}">
+
+                    <h3>{{ product.title }}</h3>
+
+                    <p>Source: {{ product.source }}</p>
+
+                    {% if product.price == lowest_price %}
+
+                        <p class="best-deal">
+                            🔥 Best Deal
+                        </p>
+
+                    {% endif %}
+
+                    <p>Price: ₹{{ product.price }}</p>
+
+                    <p>Category: {{ product.category }}</p>
+
+                    <p>Rating: {{ product.rating }}</p>
+
+                    <a href="{% url 'product_detail' product.id %}">
+
+                        <button class="buy-btn">
+                            View Product
+                        </button>
+
+                    </a>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% elif searched %}
+
+    <h2>No products found</h2>
+
+    {% endif %}
+
+    {% if products %}
+
+        <table class="comparison-table">
+
+        <tr>
+
+            <th>Product</th>
+
+            <th>Source</th>
+
+            <th>Price</th>
+
+            <th>Rating</th>
+
+            <th>Deal</th>
+
+        </tr>
+
+        {% for product in products %}
+
+        <tr>
+
+            <td>{{ product.title }}</td>
+
+            <td>{{ product.source }}</td>
+
+            <td>₹{{ product.price }}</td>
+
+            <td>{{ product.rating }}</td>
+
+            <td>
+
+            {% if product.price == lowest_price %}
+
+                🔥 Best Deal
+
+            {% endif %}
+
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+    </table>
+
+{% endif %}
+
+</body>
+
+<script>
+
+    const form = document.querySelector("form");
+
+    const spinner = document.getElementById("loading-spinner");
+
+    spinner.style.display = "none";
+
+    form.addEventListener("submit", function(){
+
+        spinner.style.display = "flex";
+
+    });
+
+</script>
+
+</html>

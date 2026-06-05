@@ -1,0 +1,160 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Dashboard</title>
+
+    <link rel="stylesheet"
+          href="{% static 'products/dashboard.css' %}">
+
+</head>
+
+<body>
+
+    <h1>
+        Welcome {{ user.username }} 👋
+    </h1>
+
+    <div class="stats">
+
+        <div class="card">
+
+            <h2>❤️ Wishlist</h2>
+
+            <p>{{ wishlist_count }}</p>
+
+        </div>
+
+        <div class="card">
+
+            <h2>🔥 Alerts</h2>
+
+            <p>{{ alert_count }}</p>
+
+        </div>
+
+        <div class="card">
+
+            <h2>📈 History</h2>
+
+            <p>{{ history_count }}</p>
+
+        </div>
+
+    </div>
+
+    <div class="recent-alerts">
+
+        <h2>
+            Recent Price Alerts
+        </h2>
+
+        {% for alert in recent_alerts %}
+
+            <div class="alert-box">
+
+                <h3>
+                    {{ alert.product.title }}
+                </h3>
+
+                <p>
+
+                    ₹{{ alert.old_price }}
+
+                    →
+
+                    ₹{{ alert.new_price }}
+
+                </p>
+
+                <small>
+
+                    {{ alert.created_at }}
+
+                </small>
+
+            </div>
+
+        {% empty %}
+
+            <div class="alert-box">
+
+                <h3>
+                    No alerts yet 🔔
+                </h3>
+
+            </div>
+
+        {% endfor %}
+
+        <h2>
+            👀 Recently Viewed Products
+        </h2>
+
+        {% for item in recent_products %}
+
+            <div class="alert-box">
+
+                <h3>
+                    {{ item.product.title }}
+                </h3>
+
+                <p>
+                    ₹{{ item.product.price }}
+                </p>
+
+                <small>
+                    {{ item.viewed_at }}
+                </small>
+
+            </div>
+
+        {% empty %}
+
+            <p>
+                No products viewed yet
+            </p>
+
+        {% endfor %}
+
+    </div>
+
+    <div style="text-align:center; margin-top:30px;">
+
+        <a href="{% url 'wishlist' %}">
+
+            <button>
+                ❤️ My Wishlist
+            </button>
+
+        </a>
+
+        <a href="{% url 'alerts' %}">
+
+            <button>
+                🔥 View Alerts
+            </button>
+
+        </a>
+
+        <a href="{% url 'home' %}">
+
+            <button>
+                🏠 Home
+            </button>
+
+        </a>
+
+    </div>
+
+</body>
+
+</html>

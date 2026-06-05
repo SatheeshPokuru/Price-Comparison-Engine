@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Price History</title>
+
+</head>
+
+<body>
+
+    <h1>{{ product.title }}</h1>
+
+    <h2>Price History 📈</h2>
+
+    <table border="1">
+
+        <tr>
+
+            <th>Price</th>
+
+            <th>Date</th>
+
+        </tr>
+
+        {% for item in history %}
+
+        <tr>
+
+            <td>₹{{ item.price }}</td>
+
+            <td>{{ item.recorded_at }}</td>
+
+        </tr>
+
+        {% empty %}
+
+        <tr>
+
+            <td colspan="2">
+
+                No price history available
+
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+    </table>
+
+</body>
+
+</html>
