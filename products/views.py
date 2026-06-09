@@ -6,8 +6,7 @@ from .models import Product
 
 import re
 
-from .scraper import scrape_books
-
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 
 from django.contrib.auth import authenticate, login, logout
@@ -30,11 +29,8 @@ from rest_framework.response import Response
 
 from rest_framework.decorators import api_view
 
-from .serializers import (
-    ProductSerializer,
-    WishlistSerializer
-)
-
+from .models import Product, Wishlist, PriceHistory, PriceAlert, RecentlyViewed
+from .scraper import scrape_books, scrape_flipkart, scrape_croma
 from .serializers import (
     ProductSerializer,
     WishlistSerializer,
@@ -68,330 +64,257 @@ def normalize_title(title):
     return title
 
 def home(request):
-
-    product = request.GET.get("product")
-
-    books = []
-
+    product = request.GET.get("product", "").strip()
     sort = request.GET.get("sort")
-
     source = request.GET.get("source")
-
     min_price = request.GET.get("min_price")
-
     max_price = request.GET.get("max_price")
 
-    products = []
+    products = Product.objects.none()
+    suggestions = Product.objects.all()[:20]
+    lowest_price = None
 
     if product:
 
-        # FIRST SEARCH DATABASE
+        # -------------------------
+        # Search Database First
+        # -------------------------
+        products = Product.objects.all()
 
-        products = Product.objects.filter(
-            title__icontains=product
-        )
+        for word in product.split():
+            products = products.filter(title__icontains=word)
 
-        # IF PRODUCTS NOT FOUND IN DATABASE
-
-        if not products:
-
-            # =========================
-            # FETCH FROM FAKESTORE API
-            # =========================
-
-            response1 = requests.get(
-                "https://fakestoreapi.com/products"
-            )
-
-            data1 = response1.json()
-
-            for item in data1:
-
-                search_text = normalize_title(product)
-
-                title = normalize_title(item["title"])
-
-                if search_text in title:
-
-                    Product.objects.get_or_create(
-
-                        title=item["title"],
-
-                        source="FakeStore",
-
-                        defaults={
-
-                            "price": item["price"],
-
-                            "category": item["category"],
-
-                            "image": item["image"],
-
-                            "rating": item["rating"]["rate"],
-
-                            "description": item["description"]
-
-                        }
-
-                    )
-
-            # =========================
-            # FETCH FROM DUMMYJSON API
-            # =========================
-
-            response2 = requests.get(
-                "https://dummyjson.com/products"
-            )
-
-            data2 = response2.json()["products"]
-
-            for item in data2:
-
-                search_text = normalize_title(product)
-
-                title = normalize_title(item["title"])
-
-                if search_text in title:
-
-                    Product.objects.get_or_create(
-
-                        title=item["title"],
-
-                        source="DummyJSON",
-
-                        defaults={
-
-                            "price": item["price"],
-
-                            "category": item["category"],
-
-                            "image": item["thumbnail"],
-
-                            "rating": item["rating"],
-
-                            "description": item["description"],
-
-                            "product_url": item["link"]
-
-                        }
-
-                    )
-
-            # SEARCH AGAIN AFTER SAVING
+        # -------------------------
+        # If Not Found → Fetch APIs
+        # -------------------------
+        if not products.exists():
 
             search_text = normalize_title(product)
 
-            all_products = Product.objects.all()
+            # FakeStore API
+            try:
+                response = requests.get(
+                    "https://fakestoreapi.com/products",
+                    timeout=10
+                )
 
-            products = []
+                for item in response.json():
 
-            for item in all_products:
+                    if search_text in normalize_title(item["title"]):
 
-                normalized_title = normalize_title(item.title)
-
-                if search_text in normalized_title:
-
-                    products.append(item)
-    
-    #Source Filtering Logic
-
-    if source:
-
-        filtered_products = []
-
-        for item in products:
-
-            if item.source == source:
-
-                filtered_products.append(item)
-
-        products = filtered_products
-    
-    #Filtering logic for min and max ranges 
-
-    if min_price:
-
-        products = [
-
-            item for item in products
-
-            if item.price >= float(min_price)
-
-        ]
-
-
-    if max_price:
-
-        products = [
-
-            item for item in products
-
-            if item.price <= float(max_price)
-
-        ]
-
-    #Sorting Logic
-    
-    if sort == "low_to_high":
-
-        products = sorted(
-            products,
-            key=lambda x: x.price
-        )
-
-    elif sort == "high_to_low":
-
-        products = sorted(
-            products,
-            key=lambda x: x.price,
-            reverse=True
-        )
-
-    elif sort == "rating":
-
-        products = sorted(
-            products,
-            key=lambda x: x.rating,
-            reverse=True
-        )
-
-    lowest_price = None
-
-    if products:
-
-        lowest_price = min(
-            product.price for product in products
-        )
-    
-    suggestions = Product.objects.all()[:20]
-
-    
-    if product:
-
-        existing_products = Product.objects.filter(
-            title__icontains=product
-    )
-
-    else:
-
-        existing_products = Product.objects.none()
-    
-    
-   # =========================
-# BOOK SCRAPING
-# =========================
-    lowest_price = None
-
-    if product:
-
-        books = scrape_books(product)
-
-        for item in books:
-
-            price = item["price"].replace("£", "")
-
-            obj, created = Product.objects.get_or_create(
-
-                title=item["title"],
-
-                source="BooksToScrape",
-
-                defaults={
-
-                    "price": float(price),
-
-                    "category": "Books",
-
-                    "image": item["image"],
-
-                    "rating": 0,
-
-                    "description": item["title"],
-
-                    "product_url": item["link"]
-
-                }
-
-            )
-
-            if not created:
-
-                new_price = float(price)
-
-                if obj.price != new_price:
-
-                    old_price = obj.price
-
-                    PriceHistory.objects.create(
-
-                        product=obj,
-
-                        price=new_price
-
-                    )
-
-                    if new_price < old_price:
-
-                        wishlists = Wishlist.objects.filter(
-                            product=obj
+                        Product.objects.get_or_create(
+                            title=item["title"],
+                            source="FakeStore",
+                            defaults={
+                                "price": item["price"],
+                                "category": item["category"],
+                                "image": item["image"],
+                                "rating": item["rating"]["rate"],
+                                "description": item["description"],
+                            },
                         )
 
-                        for wishlist in wishlists:
+            except Exception as e:
+                print("FakeStore Error:", e)
 
-                            PriceAlert.objects.create(
+            # DummyJSON API
+            try:
+                response = requests.get(
+                    "https://dummyjson.com/products",
+                    timeout=10
+                )
 
-                                user=wishlist.user,
+                for item in response.json()["products"]:
 
-                                product=obj,
+                    if search_text in normalize_title(item["title"]):
 
-                                old_price=old_price,
+                        Product.objects.get_or_create(
+                            title=item["title"],
+                            source="DummyJSON",
+                            defaults={
+                                "price": item["price"],
+                                "category": item["category"],
+                                "image": item["thumbnail"],
+                                "rating": item["rating"],
+                                "description": item["description"],
+                            },
+                        )
 
-                                new_price=new_price
+            except Exception as e:
+                print("DummyJSON Error:", e)
 
+            # -------------------------
+            # Scrape Flipkart
+            # -------------------------
+            try:
+                for item in scrape_flipkart(product):
+
+                    price = (
+                        item["price"]
+                        .replace("₹", "")
+                        .replace(",", "")
+                    )
+
+                    Product.objects.get_or_create(
+                        title=item["title"],
+                        source="Flipkart",
+                        defaults={
+                            "price": float(price),
+                            "category": "Electronics",
+                            "image": item["image"],
+                            "rating": 0,
+                            "description": item["title"],
+                            "product_url": item["link"],
+                        },
+                    )
+
+            except Exception as e:
+                print("Flipkart Error:", e)
+
+            # -------------------------
+            # Scrape Croma
+            # -------------------------
+            try:
+                for item in scrape_croma(product):
+
+                    price = (
+                        item["price"]
+                        .replace("₹", "")
+                        .replace(",", "")
+                        .strip()
+                    )
+
+                    Product.objects.get_or_create(
+                        title=item["title"],
+                        source="Croma",
+                        defaults={
+                            "price": float(price),
+                            "category": "Mobiles",
+                            "image": item["image"],
+                            "rating": 0,
+                            "description": item["title"],
+                            "product_url": item["link"],
+                        },
+                    )
+
+            except Exception as e:
+                print("Croma Error:", e)
+
+            # -------------------------
+            # Scrape Books
+            # -------------------------
+            try:
+                books = scrape_books(product)
+
+                for item in books:
+
+                    price = float(
+                        item["price"].replace("£", "")
+                    )
+
+                    obj, created = Product.objects.get_or_create(
+                        title=item["title"],
+                        source="BooksToScrape",
+                        defaults={
+                            "price": price,
+                            "category": "Books",
+                            "image": item["image"],
+                            "rating": 0,
+                            "description": item["title"],
+                            "product_url": item["link"],
+                        },
+                    )
+
+                    # Price Tracking
+                    if not created and obj.price != price:
+
+                        old_price = obj.price
+
+                        PriceHistory.objects.create(
+                            product=obj,
+                            price=price
+                        )
+
+                        if price < old_price:
+
+                            wishlists = Wishlist.objects.filter(
+                                product=obj
                             )
 
-                    obj.price = new_price
+                            for wishlist in wishlists:
 
-                    obj.save()
+                                PriceAlert.objects.create(
+                                    user=wishlist.user,
+                                    product=obj,
+                                    old_price=old_price,
+                                    new_price=price
+                                )
 
-                    print("UPDATED DB PRICE:", obj.price)
+                        obj.price = price
+                        obj.save()
 
-        # REFRESH PRODUCTS AFTER SCRAPING
+            except Exception as e:
+                print("Books Error:", e)
 
-        products = Product.objects.filter(
-            title__icontains=product
-        )
+            # Refresh Search Results
+            products = Product.objects.all()
 
+            for word in product.split():
+                products = products.filter(
+                    title__icontains=word
+                )
 
-    if product:
+        # -------------------------
+        # Source Filter
+        # -------------------------
+        if source:
+            products = products.filter(source=source)
 
-        products = Product.objects.filter(
-            title__icontains=product
-        )
+        # -------------------------
+        # Price Filters
+        # -------------------------
+        if min_price:
+            products = products.filter(
+                price__gte=float(min_price)
+            )
 
-    else:
+        if max_price:
+            products = products.filter(
+                price__lte=float(max_price)
+            )
 
-        products = []
-    
+        # -------------------------
+        # Sorting
+        # -------------------------
+        if sort == "low_to_high":
+            products = products.order_by("price")
+
+        elif sort == "high_to_low":
+            products = products.order_by("-price")
+
+        elif sort == "rating":
+            products = products.order_by("-rating")
+
+        # -------------------------
+        # Lowest Price
+        # -------------------------
+        if products.exists():
+            lowest_price = min(
+                p.price for p in products
+            )
+
     context = {
-
         "products": products,
-
         "searched": product,
-
         "lowest_price": lowest_price,
-
         "suggestions": suggestions,
     }
-
-    
 
     return render(
         request,
         "products/home.html",
-        context
+        context,
     )
-
 
 from django.shortcuts import get_object_or_404
 
@@ -755,3 +678,4 @@ def product_history_api(request, id):
         "history": history_serializer.data
 
     })
+
